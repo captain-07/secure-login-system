@@ -1,11 +1,11 @@
-# Secure Login System — FOSSEE Osdag Screening Task
+# Secure Login System
 
-Two independent implementations of a login/registration/logout system with per-user file isolation, built for the FOSSEE Osdag Autumn Semester Internship 2026 screening task:
+A portfolio project: two independent implementations of a login, registration, and logout system with per-user file isolation.
 
 1. **Custom backend** — Django + Django REST Framework + PostgreSQL + JWT
 2. **Managed backend** — Appwrite (Auth, Databases, Storage)
 
-Both implementations expose the same functional surface (register, login, logout, `/me`, `/files`, `/files/:id`) and are tested against the single provided `frontend/index.html` client, used unmodified as required by the task.
+Both implementations expose the same API (register, login, logout, `/me`, `/files`, `/files/:id`) and work with the client in `frontend/index.html`.
 
 ## Demo Video
 
@@ -46,7 +46,7 @@ secure-login-system/
 ├── appwrite-backend/           # Implementation 2 — Appwrite
 │   └── seed.py                  # Server SDK seed script
 │
-├── frontend/                   # Provided testing client (adapter shipped alongside it)
+├── frontend/                   # Browser client (adapter shipped alongside it)
 │   ├── index.html
 │   ├── mock-api.js
 │   ├── appwrite-adapter.js      # Web SDK adapter consumed by frontend/index.html
@@ -161,7 +161,7 @@ python seed.py
 
 ## Running the Frontend
 
-The provided `frontend/index.html` must be served over `http://`, not opened as a `file://` path — the Appwrite Web SDK rejects `file://` origins outright.
+`frontend/index.html` must be served over `http://`, not opened as a `file://` path — the Appwrite Web SDK rejects `file://` origins outright.
 
 ```bash
 cd frontend
@@ -174,7 +174,7 @@ Open `http://localhost:5500/index.html` and select a backend mode:
 |---|---|
 | **Custom REST backend** | Base URL: `http://localhost:8000/api`. Leave "uses cookie sessions" unchecked — this backend is bearer-token based. |
 | **Appwrite** | Fill in Endpoint, Project ID, Database ID, Files Collection ID, and Bucket ID from your Appwrite Console. |
-| **Mock** | No backend required — demonstrates expected client behavior only, per the task's note that `mock-api.js` is not a reference implementation. |
+| **Mock** | No backend required. `mock-api.js` only shows expected client behavior. It is not a reference implementation. |
 
 ---
 
@@ -211,7 +211,7 @@ The Appwrite backend is verified manually against the console and the frontend c
 
 **Decision: JWT (short-lived access token + rotating refresh token), not server-side sessions.**
 
-Django's session framework would make server-side logout invalidation trivial — a session row can simply be deleted. I chose JWT instead because it more directly demonstrates the token-lifecycle reasoning relevant to the backend roles I'm targeting (fintech and B2B SaaS), where JWT-based auth with explicit revocation is the norm, and because the project already depends on Redis for the revocation mechanism below.
+Django's session framework would make server-side logout invalidation trivial — a session row can simply be deleted. This project uses JWT because short-lived access tokens plus explicit revocation are a common pattern for stateless APIs, and because Redis is already available for the revocation mechanism below.
 
 The tradeoff is real: a JWT is self-contained and remains cryptographically valid until it expires, regardless of server-side state. Satisfying "logout invalidates server-side, not just client-side" therefore requires an explicit revocation layer — described next — rather than getting it for free the way a session-based design would.
 
@@ -232,7 +232,7 @@ Blacklisting only the refresh token would leave a window (up to the 15-minute ac
 - `GET /files` filters at the database level — `File.objects.filter(owner=request.user)` — so rows belonging to other users are never returned, rather than being fetched and filtered afterward.
 - `GET /files/:id` looks up the file by ID with no owner filter in the initial query, then explicitly compares `file.owner` against `request.user`. A nonexistent ID returns `404`; an ID that exists but belongs to a different user returns `403`.
 
-This 403/404 split is a deliberate design decision worth stating explicitly. General REST security convention favors returning an identical `404` for both cases, to prevent an attacker from enumerating valid file IDs by observing which ones return a different status. However, the task specification explicitly requires a response "distinct from a file that simply does not exist" — a direct requirement for the 403/404 distinction implemented here. I'm noting this tension rather than silently resolving it, since it reflects a genuine tradeoff between a general security convention and an explicit task requirement; I followed the latter.
+This 403/404 split is intentional. A missing ID returns `404`. An ID that exists but belongs to someone else returns `403`, so the client can tell those cases apart. The usual REST convention is to return `404` for both, so file IDs cannot be enumerated from the status code. This project keeps the distinction and documents that tradeoff.
 
 **Appwrite backend:**
 
@@ -255,8 +255,8 @@ Isolation is enforced by Appwrite's permission engine, not application code. Eac
 
 ## Future Improvements
 
-- Move from `AbstractUser` to a from-scratch `AbstractBaseUser` implementation for full control over the user model, rather than inheriting Django's default admin/permission scaffolding, which exceeds what this task strictly needs.
+- Move from `AbstractUser` to a from-scratch `AbstractBaseUser` implementation for full control over the user model, instead of inheriting Django's default admin and permission fields.
 - Add a "list active sessions / revoke a specific device" endpoint — meaningful now that refresh tokens are individually blacklistable, and a natural extension of the existing revocation mechanism.
 - Add TOTP-based two-factor authentication as an optional login step.
 - Replace seeded dummy file content with realistic sample files (PDFs, images) for a more representative download-testing experience.
-- Add CI (GitHub Actions) to run the pytest suite on every push. Not yet wired up due to time constraints, but the test suite was written with this in mind and requires no changes to support it.
+- Add CI (GitHub Actions) to run the pytest suite on every push. The suite is ready for that; the workflow is not wired up yet.

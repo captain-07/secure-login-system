@@ -3,7 +3,7 @@
  * -----------
  * A tiny in-browser "fake backend" so index.html feels alive before you've
  * written the real one. It reads seed-data.json, keeps everything in memory,
- * and intercepts window.fetch for the routes the task describes:
+ * and intercepts window.fetch for these routes:
  *
  *   POST /register
  *   POST /login

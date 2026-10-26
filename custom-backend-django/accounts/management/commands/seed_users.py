@@ -16,7 +16,7 @@ SEED_USERS = [
 
 
 class Command(BaseCommand):
-    help = "Seeds 3 test users (matching the provided seed-data.json) with sample files."
+    help = "Seeds 3 test users (matching frontend/seed-data.json) with sample files."
 
     def handle(self, *args, **options):
         for u in SEED_USERS:
